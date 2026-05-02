@@ -72,7 +72,8 @@ flowchart LR
   * **Vertex AI** habilitado.
   * **Drive API / Docs API / Sheets API** habilitadas.
 * Cuenta de servicio con permisos adecuados (ver [Permisos y scopes](#permisos-y-scopes)).
-* (Recomendado) **PyMuPDF** (`fitz`) instalado para mejor extracción de texto; si no, se usa **PyPDF2** como fallback.
+* **PyPDF2** para extracción de texto de PDFs (único método soportado en producción por estabilidad).
+  * **PyMuPDF** (`fitz`) está deshabilitado debido a problemas de estabilidad (SIGABRT, double free/corruption) en Cloud Run.
 
 ---
 
@@ -91,7 +92,7 @@ Asegúrate de que `requirements.txt` incluya al menos:
 fastapi
 uvicorn
 PyPDF2
-pymupdf        # opcional pero recomendado
+# pymupdf        # DESHABILITADO por problemas de estabilidad en Cloud Run
 google-cloud-storage
 google-api-python-client
 google-auth
@@ -176,9 +177,15 @@ gcloud run deploy regresos-api \
   --region $GCP_LOCATION \
   --platform managed \
   --allow-unauthenticated \
+  --timeout 3600 \
+  --memory 2Gi \
   --set-env-vars GCP_PROJECT_ID=$GCP_PROJECT_ID,GCP_LOCATION=$GCP_LOCATION,ENVIRONMENT=prod,LOG_LEVEL=INFO,PDF_STAGING_BUCKET=my-bucket-out,MAP_MODEL_ID=gemini-2.5-flash,REDUCE_MODEL_ID=gemini-2.5-pro
 ```
 
+> **Parámetros de estabilidad:**
+> - `--timeout 3600`: Timeout de 1 hora para procesamiento de PDFs grandes y complejos
+> - `--memory 2Gi`: 2 GiB de memoria para evitar crashes con PDFs pesados
+>
 > Si usas **autenticación** con OIDC, restringe `--allow-unauthenticated` y agrega políticas IAM/ID Tokens en tu cliente.
 
 ---
@@ -453,9 +460,11 @@ Scopes usados (construidos en `src/auth.py`):
 
 ## Limitaciones conocidas
 
-* **PyMuPDF / PyPDF2**:
+* **Extracción de PDFs (PyPDF2)**:
 
-  * Funcionan mejor con PDFs **born-digital**.
+  * **PyMuPDF está deshabilitado** en producción debido a errores críticos de memoria (`SIGABRT`, `double free or corruption`) al procesar PDFs complejos en Cloud Run.
+  * El servicio usa **exclusivamente PyPDF2** como método de extracción, que es más estable pero puede ser más lento y menos preciso con layouts complejos.
+  * Ambas librerías funcionan mejor con PDFs **born-digital**.
   * Si el PDF está **escaneado**, con imágenes o capas extrañas, la extracción de texto puede ser pobre o vacía.
 
   *Mitigación:* Ejecutar un pipeline de OCR (Cloud Vision, Document AI, Tesseract, etc.) antes de este servicio.

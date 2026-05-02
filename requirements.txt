@@ -16,4 +16,6 @@ httplib2>=0.22
 # Vertex AI (incluye módulo `vertexai`)
 google-cloud-aiplatform>=1.70
 
+# PDF Processing
 PyPDF2
+# pymupdf  # DESHABILITADO: Causa errores SIGABRT (double free/corruption) en Cloud Run con PDFs complejos

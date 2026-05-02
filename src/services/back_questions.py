@@ -188,9 +188,10 @@ def _extract_full_text(data: bytes) -> str:
             else:
                 parts.append((str(page.get_text("text")) or "").replace("\r", ""))
         doc.close()
+        logger.info("📄 Extracción de texto usando PyMuPDF (fitz)")
         return "\n".join(parts)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.info(f"⚠️ PyMuPDF no disponible o falló ({type(e).__name__}), usando PyPDF2 fallback")
 
     r = PdfReader(BytesIO(data))
     buf = []
@@ -200,6 +201,7 @@ def _extract_full_text(data: bytes) -> str:
             buf.append(t.replace("\r", ""))
         except Exception:
             buf.append("")
+    logger.info("📄 Extracción de texto usando PyPDF2 (fallback)")
     return "\n".join(buf)
 
 
@@ -290,9 +292,10 @@ def _extract_sample_pdf_bytes(data: bytes, take_first: int, take_last: int) -> b
         result = out.tobytes()
         out.close()
         src.close()
+        logger.info("📄 Muestreo de PDF usando PyMuPDF (fitz)")
         return result
-    except Exception:
-        pass
+    except Exception as e:
+        logger.info(f"⚠️ PyMuPDF no disponible o falló ({type(e).__name__}), usando PyPDF2 fallback para muestreo")
 
     r = PdfReader(BytesIO(data))
     n = len(r.pages)
@@ -306,6 +309,7 @@ def _extract_sample_pdf_bytes(data: bytes, take_first: int, take_last: int) -> b
             w.add_page(r.pages[i])
     out = BytesIO()
     w.write(out)
+    logger.info("📄 Muestreo de PDF usando PyPDF2 (fallback)")
     return out.getvalue()
 
 
